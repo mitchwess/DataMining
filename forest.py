@@ -1,6 +1,8 @@
-import csv
 import pandas as pd
 import math
+
+import sys
+sys.setrecursionlimit(2000)
 
 df = pd.read_csv("mutations.csv")
 tmp = df.sum(axis=0)
@@ -72,6 +74,7 @@ def createTree(df):
     return root
 
 def splitNode(df):
+
     cancer = 0
     noncancer = 0
     for i in range(0, df.shape[0]):
@@ -80,19 +83,20 @@ def splitNode(df):
         else:
             noncancer=noncancer+1
 
-    if cancer/(noncancer+0.0000000000001) > 2.5:           #no further splits when samples have a clear ratio
+    if cancer/(noncancer+0.0000000000001) > 2:           #no further splits when samples have a clear ratio 
         return Node('C')
-    elif noncancer/(cancer+0.000000000001) > 2.5:
+    elif noncancer/(cancer+0.000000000001) > 2:
         return Node('NC')
-    elif df.shape[0] < 11:
+    elif df.shape[0] < 8:
         if cancer > noncancer:
             return Node('C')
-        else:
+        else: 
             return Node('NC')
     else:
         mutation = topMutation(df)
         left = df.copy()
         right = df.copy()
+
         for i in range(0, df.shape[0]):         #split node 
             if df[mutation][i] == 1:
                 right.drop([i], inplace=True)
@@ -100,17 +104,26 @@ def splitNode(df):
                 left.drop([i], inplace=True)
         left.reset_index(inplace=True, drop=True)
         right.reset_index(inplace=True, drop=True)
+
+        if left.shape[0] == df.shape[0]:
+            return Node('C')
+        elif right.shape[0] == df.shape[0]:
+            return Node('NC')
+
         root = Node(mutation)                   #recursively call splitNode 
-        root.left = splitNode(left)
-        root.right = splitNode(right)
+
+        if left.shape[0] != 0:
+            root.left = splitNode(left)
+        if right.shape[0] != 0: 
+            root.right = splitNode(right)
         return root
 
 def predictValue(root, row):       #sample is ran through the tree and determined to be C or NC
     if root.data == 'C':
         return 'C'
-    if root.data == 'NC':
+    elif root.data == 'NC':
         return 'NC'
-    if row[root.data] == 1:
+    elif row[root.data] == 1:
         return predictValue(root.left, row)
     else:
         return predictValue(root.right, row)
@@ -244,7 +257,7 @@ def testForest(forest, test_data):
     print('\n')
     print('test data# ', test_data.shape[0])
     for i in range(0, test_data.shape[0]):
-        print(test_data['patients'][i], ' Prediction: ', votes[i], end='')
+        print(test_data['patients'][i], ' Prediction: ', votes[i], ' \n')
     print('\n')
     print('tp: ', tp, ' tn: ', tn, ' fp: ', fp, ' fn: ', fn)                #output tests
     #o	Accuracy
